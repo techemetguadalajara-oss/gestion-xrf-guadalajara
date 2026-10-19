@@ -155,7 +155,6 @@ button[type="submit"]:hover { background-color: var(--primary-dark); }
 </div>
 
 <script>
-// URL DE GOOGLE APPS SCRIPT ACTUALIZADA
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxDgYMI6goFn0EsbJJpr5A_CuADumN2mOz3kQyiocb_MzX93v3Xcym5vx2ZLS7Ap0x9/exec";
 const CLAVE_XRF = "xrf123";
 
@@ -224,11 +223,11 @@ function togglePesoInicial(checkbox) {
   if (checkbox.checked) {
     inputPeso.value = '';
     inputPeso.disabled = true;
-    inputPeso.required = false;
+    inputPeso.removeAttribute('required');
     inputFechaIngreso.value = '';
   } else {
     inputPeso.disabled = false;
-    inputPeso.required = true;
+    inputPeso.setAttribute('required', 'true');
     inputFechaIngreso.value = new Date().toISOString().split('T')[0];
   }
 }
@@ -325,7 +324,7 @@ document.getElementById('form-compras').addEventListener('submit', function(e) {
   document.getElementById('fecha-recolectada').value = new Date().toISOString().split('T')[0];
   document.getElementById('fecha-ingreso').value = new Date().toISOString().split('T')[0];
   document.getElementById('peso-inicial').disabled = false;
-  document.getElementById('peso-inicial').required = true;
+  document.getElementById('peso-inicial').setAttribute('required', 'true');
 });
 
 function actualizarLista() {
@@ -354,7 +353,6 @@ function actualizarLista() {
 
     let controlesExtra = '';
 
-    // Controles para el Agente de Compras (para ingresar fecha de ingreso a bodega y peso pendiente)
     if (rolActual === 'compras' && (m.pesoInicial === 'Pendiente' || m.pesoInicial === '' || m.pesoInicial === undefined || m.fechaIngreso === 'Pendiente')) {
       const hoy = new Date().toISOString().split('T')[0];
       controlesExtra = `
@@ -368,4 +366,31 @@ function actualizarLista() {
             <input type="number" step="0.01" id="pesoinicial-compras-\${m.codigo}" placeholder="Ej. 12.5">
           </div>
           <div>
-            <button class="btn
+            <button class="btn-accion-xrf" onclick="completarPesoCompras('\${m.codigo}')">Guardar Ingreso a Bodega</button>
+          </div>
+        </div>
+      `;
+    }
+
+    if (rolActual === 'xrf') {
+      const pesoFinalActual = (m.pesoFinal === 'Pendiente' || m.pesoFinal === undefined || m.pesoFinal === '') ? '' : m.pesoFinal;
+      controlesExtra = `
+        <div class="card-footer">
+          <div>
+            <label>Estatus XRF:</label>
+            <select id="estatus-\${m.codigo}">
+              <option value="Ingresado y en turno" \${m.estatusAnalisis === 'Ingresado y en turno' ? 'selected' : ''}>⏳ Ingresado y en turno</option>
+              <option value="Revisión y limpieza" \${m.estatusAnalisis === 'Revisión y limpieza' ? 'selected' : ''}>🧹 Revisión y limpieza</option>
+              <option value="Trituración" \${m.estatusAnalisis === 'Trituración' ? 'selected' : ''}>⚙️ Trituración</option>
+              <option value="Analizando" \${m.estatusAnalisis === 'Analizando' ? 'selected' : ''}>🔬 Analizando</option>
+              <option value="Terminado" \${m.estatusAnalisis === 'Terminado' ? 'selected' : ''}>✅ Terminado</option>
+              <option value="Retenida por humedad" \${m.estatusAnalisis === 'Retenida por humedad' ? 'selected' : ''}>💧 Retenida por humedad</option>
+              <option value="Falta de peso" \${m.estatusAnalisis === 'Falta de peso' ? 'selected' : ''}>⚠️ Falta de peso</option>
+            </select>
+          </div>
+          <div>
+            <label>Peso Final / Neto (kg):</label>
+            <input type="number" step="0.01" id="pesofinal-${m.codigo}" value="${pesoFinalActual}" placeholder="Ej. 11.8">
+          </div>
+          <div>
+            <button class="btn-accion-xrf" onclick="actualizarEstatusYPeso('\${m.codigo}')">Guardar Estatus y
