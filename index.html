@@ -32,6 +32,8 @@ h2 { color: var(--primary-dark); font-size: 20px; margin-bottom: 15px; border-bo
 .btn-refrescar:hover { background-color: #138496; }
 .btn-danger { background-color: var(--danger-color); color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600; }
 .btn-danger:hover { background-color: #bd2130; }
+.btn-secundario { background-color: #6c757d; color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; }
+.btn-secundario:hover { background-color: #5a6268; }
 
 .role-selector { display: flex; justify-content: center; gap: 15px; margin-bottom: 25px; }
 .role-btn { padding: 10px 20px; border: 2px solid var(--primary-color); background: white; color: var(--primary-color); font-weight: 600; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
@@ -52,11 +54,17 @@ button[type="submit"]:hover { background-color: var(--primary-dark); }
 .btn-accion-xrf { background-color: var(--primary-color); color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; transition: background 0.2s; white-space: nowrap; height: 38px; }
 .btn-accion-xrf:hover { background-color: var(--primary-dark); }
 
-/* TABLERO KANBAN DE COLUMNAS */
+/* TABLERO KANBAN DE COLUMNAS PLEGABLES */
 .tablero-columnas { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; align-items: start; }
-.columna { background: #eef4fb; padding: 15px; border-radius: var(--radius); border: 1px solid var(--border-color); min-height: 400px; }
-.columna-titulo { font-size: 16px; font-weight: 700; color: var(--primary-dark); margin-bottom: 15px; text-align: center; display: flex; justify-content: space-between; align-items: center; background: white; padding: 10px 15px; border-radius: 8px; border: 1px solid var(--border-color); }
-.columna-contador { background: var(--primary-color); color: white; border-radius: 12px; padding: 2px 8px; font-size: 12px; }
+.columna { background: #eef4fb; padding: 15px; border-radius: var(--radius); border: 1px solid var(--border-color); transition: all 0.3s ease; }
+.columna-titulo { font-size: 15px; font-weight: 700; color: var(--primary-dark); margin-bottom: 12px; text-align: center; display: flex; justify-content: space-between; align-items: center; background: white; padding: 10px 15px; border-radius: 8px; border: 1px solid var(--border-color); cursor: pointer; user-select: none; }
+.columna-titulo:hover { background-color: var(--primary-light); }
+.columna-contador { background: var(--primary-color); color: white; border-radius: 12px; padding: 2px 8px; font-size: 12px; margin-left: 8px; }
+.columna-contenido { display: block; }
+.columna.plegada .columna-contenido { display: none; }
+.columna.plegada { min-height: auto; padding-bottom: 10px; }
+
+.toggle-icono { font-size: 12px; color: var(--primary-color); transition: transform 0.2s; }
 
 .muestra-item { background: white; padding: 15px; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 15px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 10px; position: relative; overflow: hidden; }
 .muestra-item::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; }
@@ -90,7 +98,9 @@ button[type="submit"]:hover { background-color: var(--primary-dark); }
       <button class="role-btn active" id="btn-compras" onclick="cambiarRol('compras')">Vista: Agente de Compras</button>
       <button class="role-btn" id="btn-xrf" onclick="solicitarAccesoXRF()">Vista: Analista XRF 🔒</button>
     </div>
-    <div style="display:flex; gap:10px;">
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <button class="btn-secundario" onclick="plegarTodasColumnas(true)">📂 Plegar Todo</button>
+      <button class="btn-secundario" onclick="plegarTodasColumnas(false)">📂 Abrir Todo</button>
       <button class="btn-refrescar" onclick="cargarMuestrasDesdeNube()">🔄 Sincronizar</button>
       <button class="btn-danger" id="btn-borrar-todo" style="display:none;" onclick="confirmarBorrarTodo()">⚠️ Borrar Todo</button>
     </div>
@@ -158,7 +168,7 @@ button[type="submit"]:hover { background-color: var(--primary-dark); }
     </form>
   </div>
 
-  <!-- LISTA DE MUESTRAS EN COLUMNAS -->
+  <!-- LISTA DE MUESTRAS EN COLUMNAS PLEGABLES -->
   <h2>Tablero de Control de Muestras</h2>
   <div id="lista-muestras" class="tablero-columnas">
     <div class="loading">Cargando muestras desde Google Sheets...</div>
@@ -362,7 +372,6 @@ function actualizarLista() {
     return;
   }
 
-  // DEFINICIÓN DE COLUMNAS SEGÚN EL ROL
   let col1Title = "", col2Title = "", col3Title = "";
   let col1Muestras = [], col2Muestras = [], col3Muestras = [];
 
@@ -375,7 +384,6 @@ function actualizarLista() {
     col2Muestras = muestras.filter(m => m.fechaIngreso && m.fechaIngreso !== 'Pendiente' && m.estatusAnalisis !== 'Terminado');
     col3Muestras = muestras.filter(m => m.estatusAnalisis === 'Terminado');
 
-    // Ordenar Columna 2 (En Bodega) de la más antigua a la más nueva por Fecha de Ingreso
     col2Muestras.sort((a, b) => new Date(a.fechaIngreso) - new Date(b.fechaIngreso));
   } else {
     col1Title = "📥 En Bodega / Por Analizar";
@@ -386,38 +394,70 @@ function actualizarLista() {
     col2Muestras = muestras.filter(m => m.estatusAnalisis !== 'Ingresado y en turno' && m.estatusAnalisis !== 'Terminado');
     col3Muestras = muestras.filter(m => m.estatusAnalisis === 'Terminado');
 
-    // Ordenar Columna 1 (Por Analizar) de la más antigua a la más nueva por Fecha de Ingreso
     col1Muestras.sort((a, b) => new Date(a.fechaIngreso) - new Date(b.fechaIngreso));
   }
 
-  // RENDERIZAR LAS 3 COLUMNAS
-  contenedor.appendChild(crearColumnaHTML(col1Title, col1Muestras));
-  contenedor.appendChild(crearColumnaHTML(col2Title, col2Muestras));
-  contenedor.appendChild(crearColumnaHTML(col3Title, col3Muestras));
+  contenedor.appendChild(crearColumnaHTML(col1Title, col1Muestras, "col1"));
+  contenedor.appendChild(crearColumnaHTML(col2Title, col2Muestras, "col2"));
+  contenedor.appendChild(crearColumnaHTML(col3Title, col3Muestras, "col3"));
 }
 
-function crearColumnaHTML(titulo, lista) {
+function crearColumnaHTML(titulo, lista, idColumna) {
   const colDiv = document.createElement('div');
   colDiv.className = 'columna';
+  colDiv.id = `columna-${idColumna}`;
 
   colDiv.innerHTML = `
-    <div class="columna-titulo">
-      <span>${titulo}</span>
-      <span class="columna-contador">${lista.length}</span>
+    <div class="columna-titulo" onclick="toggleColumna('${idColumna}')">
+      <div>
+        <span>${titulo}</span>
+        <span class="columna-contador">${lista.length}</span>
+      </div>
+      <span class="toggle-icono" id="icono-${idColumna}">▼</span>
+    </div>
+    <div class="columna-contenido" id="contenido-${idColumna}">
+      ${lista.length === 0 ? '<p style="text-align:center; font-size:12px; color:#888; padding:15px 0;">Sin muestras en esta fase</p>' : ''}
     </div>
   `;
 
-  if (lista.length === 0) {
-    colDiv.innerHTML += '<p style="text-align:center; font-size:12px; color:#888;">Sin muestras en esta fase</p>';
-    return colDiv;
+  const contenidoDiv = colDiv.querySelector(`#contenido-${idColumna}`);
+
+  if (lista.length > 0) {
+    lista.forEach(m => {
+      const card = crearMuestraCard(m);
+      contenidoDiv.appendChild(card);
+    });
   }
 
-  lista.forEach(m => {
-    const card = crearMuestraCard(m);
-    colDiv.appendChild(card);
-  });
-
   return colDiv;
+}
+
+function toggleColumna(idColumna) {
+  const col = document.getElementById(`columna-${idColumna}`);
+  const icono = document.getElementById(`icono-${idColumna}`);
+  if (col) {
+    col.classList.toggle('plegada');
+    if (col.classList.contains('plegada')) {
+      icono.textContent = '▲';
+    } else {
+      icono.textContent = '▼';
+    }
+  }
+}
+
+function plegarTodasColumnas(plegar) {
+  const columnas = document.querySelectorAll('.columna');
+  columnas.forEach(col => {
+    const id = col.id.replace('columna-', '');
+    const icono = document.getElementById(`icono-${id}`);
+    if (plegar) {
+      col.classList.add('plegada');
+      if (icono) icono.textContent = '▲';
+    } else {
+      col.classList.remove('plegada');
+      if (icono) icono.textContent = '▼';
+    }
+  });
 }
 
 function crearMuestraCard(m) {
@@ -576,7 +616,7 @@ function guardarFechaIngresoCompras(codigo) {
       return;
     }
     m.fechaIngreso = valorFechaIngreso;
-    guardarEnNube(m, `Muestra ${codigo} ingresada a bodega. Pasa a la siguiente columna.`);
+    guardarEnNube(m, `Muestra ${codigo} ingresada a bodega.`);
   }
 }
 
