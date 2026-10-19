@@ -144,7 +144,7 @@ button[type="submit"]:hover { background-color: var(--primary-dark); }
 </div>
 
 <script>
-// URL DE LA APLICACIÓN WEB DE GOOGLE APPS SCRIPT CONFIGURADA
+// URL DE LA APLICACIÓN WEB DE GOOGLE APPS SCRIPT ACTUALIZADA
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzCSc5zubYksbEH9d0RzGDpEB7g2tLqdLmYEgEkN6jzAXHZtZl98FzE2HwrJBymWek/exec";
 
 // CONTRASEÑA DE ACCESO PARA LA VISTA DE ANALISTA XRF
@@ -267,7 +267,9 @@ document.getElementById('form-compras').addEventListener('submit', function(e) {
   const notasAgente = document.getElementById('notas-agente').value;
   
   const codigo = generarCodigo(agente);
-  const fechaIngreso = new Date().toLocaleString();
+  
+  // Si no se pesó, la Fecha de Ingreso queda pendiente hasta que Compras la pese e ingrese
+  const fechaIngreso = sinPeso ? 'Pendiente' : new Date().toLocaleString();
 
   if (!proveedoresGuardados.includes(proveedor)) {
     proveedoresGuardados.push(proveedor);
@@ -330,10 +332,27 @@ function actualizarLista() {
 
     div.className = `muestra-item ${claseEstado}`;
 
-    let controlesXrf = '';
+    let controlesExtra = '';
+
+    // Controles para el Agente de Compras (si el peso está pendiente)
+    if (rolActual === 'compras' && (m.pesoInicial === 'Pendiente' || m.pesoInicial === '' || m.pesoInicial === undefined)) {
+      controlesExtra = `
+        <div class="card-footer" style="grid-template-columns: 1fr auto;">
+          <div>
+            <label>Ingresar Peso Inicial (kg):</label>
+            <input type="number" step="0.01" id="pesoinicial-compras-${m.codigo}" placeholder="Ej. 12.5">
+          </div>
+          <div>
+            <button class="btn-accion-xrf" onclick="completarPesoCompras('${m.codigo}')">Guardar Peso e Ingreso</button>
+          </div>
+        </div>
+      `;
+    }
+
+    // Controles para el Analista XRF
     if (rolActual === 'xrf') {
       const pesoFinalActual = (m.pesoFinal === 'Pendiente' || m.pesoFinal === undefined || m.pesoFinal === '') ? '' : m.pesoFinal;
-      controlesXrf = `
+      controlesExtra = `
         <div class="card-footer">
           <div>
             <label>Estatus XRF:</label>
@@ -367,9 +386,13 @@ function actualizarLista() {
       `;
     }
 
-    const pesoInicialHtml = (m.pesoInicial === 'Pendiente' || m.pesoInicial === '') 
-      ? `<span style="color:var(--danger-color);">Pendiente</span>` 
+    const pesoInicialHtml = (m.pesoInicial === 'Pendiente' || m.pesoInicial === '' || m.pesoInicial === undefined) 
+      ? `<span style="color:var(--danger-color); font-weight:bold;">Pendiente de pesar</span>` 
       : `${m.pesoInicial} kg`;
+
+    const fechaIngresoHtml = (m.fechaIngreso === 'Pendiente' || m.fechaIngreso === '' || m.fechaIngreso === undefined)
+      ? `<span style="color:var(--danger-color); font-weight:bold;">Pendiente</span>`
+      : m.fechaIngreso;
 
     const pesoFinalDisplay = (m.pesoFinal === 'Pendiente' || m.pesoFinal === '' || m.pesoFinal === undefined) 
       ? '<span style="color:var(--danger-color);">Pendiente</span>' 
@@ -382,7 +405,7 @@ function actualizarLista() {
         </div>
         <div style="text-align:right;">
           <span class="fecha">Recolectada: ${m.fechaRecolectada || 'No especificada'}</span><br>
-          <span class="fecha">Ingreso Sistema: ${m.fechaIngreso}</span>
+          <span class="fecha">Ingreso Sistema: ${fechaIngresoHtml}</span>
         </div>
       </div>
       <div class="card-body">
@@ -400,10 +423,24 @@ function actualizarLista() {
           <strong>Notas XRF:</strong> ${m.notasXrf || 'Ninguna'}
         </div>
       </div>
-      ${controlesXrf}
+      ${controlesExtra}
     `;
     contenedor.appendChild(div);
   });
+}
+
+function completarPesoCompras(codigo) {
+  const m = muestras.find(item => item.codigo === codigo);
+  if (m) {
+    const valorPeso = document.getElementById(`pesoinicial-compras-${codigo}`).value;
+    if (!valorPeso || valorPeso <= 0) {
+      alert("Por favor ingrese un peso inicial válido.");
+      return;
+    }
+    m.pesoInicial = parseFloat(valorPeso);
+    m.fechaIngreso = new Date().toLocaleString(); // Registra la fecha exacta de ingreso al ser pesado
+    guardarEnNube(m, `Peso inicial y fecha de ingreso registrados para la muestra ${codigo}`);
+  }
 }
 
 function actualizarPeso(codigo) {
