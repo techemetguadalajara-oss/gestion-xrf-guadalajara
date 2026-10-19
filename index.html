@@ -49,7 +49,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
 button[type="submit"] { background-color: var(--primary-color); color: white; border: none; cursor: pointer; font-size: 16px; font-weight: 600; margin-top: 10px; padding: 12px; border-radius: 8px; width: 100%; transition: background-color 0.2s; }
 button[type="submit"]:hover { background-color: var(--primary-dark); }
 
-.btn-accion-xrf { background-color: var(--primary-color); color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; transition: background 0.2s; white-space: nowrap; height: 45px; }
+.btn-accion-xrf { background-color: var(--primary-color); color: white; border: none; padding: 10px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; transition: background 0.2s; white-space: nowrap; height: 42px; }
 .btn-accion-xrf:hover { background-color: var(--primary-dark); }
 
 .muestra-item { background: white; padding: 20px; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 15px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 12px; position: relative; overflow: hidden; }
@@ -69,7 +69,8 @@ button[type="submit"]:hover { background-color: var(--primary-dark); }
 .fecha { font-size: 12px; color: var(--text-light); }
 .card-body { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px; color: var(--text-light); }
 .card-body strong { color: var(--text-color); }
-.card-footer { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: flex-end; border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 5px; }
+.card-footer-row { display: flex; gap: 10px; align-items: flex-end; border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: 5px; }
+.card-footer-row > div { flex-grow: 1; }
 .loading { text-align: center; color: var(--primary-color); font-weight: 600; padding: 20px; }
 </style>
 </head>
@@ -123,10 +124,7 @@ button[type="submit"]:hover { background-color: var(--primary-dark); }
 
       <div class="form-group">
         <label for="peso-inicial">Peso Inicial (kg):</label>
-
-        <!-- Sin atributo required directo en el HTML para evitar bloqueos del navegador -->
         <input type="number" step="0.01" id="peso-inicial" placeholder="Ej. 12.5">
-
         <div class="checkbox-container">
           <input type="checkbox" id="sin-peso" onchange="togglePesoInicial(this)">
           <label for="sin-peso" style="margin-bottom:0; display:inline; font-weight:normal;">No se pudo pesar / Ingresar después al llegar a bodega</label>
@@ -280,7 +278,6 @@ document.getElementById('form-compras').addEventListener('submit', function(e) {
   const sinPeso = document.getElementById('sin-peso').checked;
   const inputPesoValue = document.getElementById('peso-inicial').value;
 
-  // Validación manual de peso si NO está marcada la casilla
   if (!sinPeso && (!inputPesoValue || isNaN(parseFloat(inputPesoValue)))) {
     alert("Por favor ingresa un peso inicial válido o marca la casilla 'No se pudo pesar'.");
     return;
@@ -328,231 +325,4 @@ document.getElementById('form-compras').addEventListener('submit', function(e) {
     pesoFinal: 'Pendiente'
   };
 
-  guardarEnNube(nuevaMuestra, `Muestra registrada con éxito. Código asignado: ${codigo}`);
-  this.reset();
-  document.getElementById('fecha-recolectada').value = new Date().toISOString().split('T')[0];
-  document.getElementById('fecha-ingreso').value = new Date().toISOString().split('T')[0];
-  document.getElementById('peso-inicial').disabled = false;
-});
-
-function actualizarLista() {
-  const contenedor = document.getElementById('lista-muestras');
-  contenedor.innerHTML = '';
-
-  if (muestras.length === 0) {
-    contenedor.innerHTML = '<p style="text-align:center; color:#666;">No hay muestras registradas en la base de datos.</p>';
-    return;
-  }
-
-  muestras.forEach((m) => {
-    const div = document.createElement('div');
-    
-    let iconoEstatus = '⏳';
-    let claseEstado = 'estado-esperando';
-
-    if (m.estatusAnalisis === 'Revisión y limpieza') { iconoEstatus = '🧹'; claseEstado = 'estado-limpieza'; }
-    else if (m.estatusAnalisis === 'Trituración') { iconoEstatus = '⚙️'; claseEstado = 'estado-trituracion'; }
-    else if (m.estatusAnalisis === 'Analizando') { iconoEstatus = '🔬'; claseEstado = 'estado-analizando'; }
-    else if (m.estatusAnalisis === 'Terminado') { iconoEstatus = '✅'; claseEstado = 'estado-terminado'; }
-    else if (m.estatusAnalisis === 'Retenida por humedad') { iconoEstatus = '💧'; claseEstado = 'estado-humedad'; }
-    else if (m.estatusAnalisis === 'Falta de peso') { iconoEstatus = '⚠️'; claseEstado = 'estado-faltapeso'; }
-
-    div.className = `muestra-item ${claseEstado}`;
-
-    let controlesExtra = '';
-
-    if (rolActual === 'compras' && (m.pesoInicial === 'Pendiente' || m.pesoInicial === '' || m.pesoInicial === undefined || m.fechaIngreso === 'Pendiente')) {
-      const hoy = new Date().toISOString().split('T')[0];
-      controlesExtra = `
-        <div class="card-footer" style="grid-template-columns: 1fr 1fr auto;">
-          <div>
-            <label>Fecha Ingreso Bodega:</label>
-            <input type="date" id="fechaingreso-compras-${m.codigo}" value="${hoy}">
-          </div>
-          <div>
-            <label>Ingresar Peso Inicial (kg):</label>
-            <input type="number" step="0.01" id="pesoinicial-compras-${m.codigo}" placeholder="Ej. 12.5">
-          </div>
-          <div>
-            <button class="btn-accion-xrf" onclick="completarPesoCompras('${m.codigo}')">Guardar Ingreso a Bodega</button>
-          </div>
-        </div>
-      `;
-    }
-
-    if (rolActual === 'xrf') {
-      const pesoFinalActual = (m.pesoFinal === 'Pendiente' || m.pesoFinal === undefined || m.pesoFinal === '') ? '' : m.pesoFinal;
-      controlesExtra = `
-        <div class="card-footer">
-          <div>
-            <label>Estatus XRF:</label>
-            <select id="estatus-${m.codigo}">
-              <option value="Ingresado y en turno" ${m.estatusAnalisis === 'Ingresado y en turno' ? 'selected' : ''}>⏳ Ingresado y en turno</option>
-              <option value="Revisión y limpieza" ${m.estatusAnalisis === 'Revisión y limpieza' ? 'selected' : ''}>🧹 Revisión y limpieza</option>
-              <option value="Trituración" ${m.estatusAnalisis === 'Trituración' ? 'selected' : ''}>⚙️ Trituración</option>
-              <option value="Analizando" ${m.estatusAnalisis === 'Analizando' ? 'selected' : ''}>🔬 Analizando</option>
-              <option value="Terminado" ${m.estatusAnalisis === 'Terminado' ? 'selected' : ''}>✅ Terminado</option>
-              <option value="Retenida por humedad" ${m.estatusAnalisis === 'Retenida por humedad' ? 'selected' : ''}>💧 Retenida por humedad</option>
-              <option value="Falta de peso" ${m.estatusAnalisis === 'Falta de peso' ? 'selected' : ''}>⚠️ Falta de peso</option>
-            </select>
-          </div>
-          <div>
-            <label>Peso Final / Neto (kg):</label>
-            <input type="number" step="0.01" id="pesofinal-${m.codigo}" value="${pesoFinalActual}" placeholder="Ej. 11.8">
-          </div>
-          <div>
-            <button class="btn-accion-xrf" onclick="actualizarEstatusYPeso('${m.codigo}')">Guardar Estatus y Peso</button>
-          </div>
-        </div>
-        <div style="margin-top:12px; display:flex; gap:10px; align-items:flex-end; border-top:1px dashed var(--border-color); padding-top:10px;">
-          <div style="flex-grow:1;">
-            <label>Notas XRF:</label>
-            <input type="text" id="notasxrf-${m.codigo}" value="${m.notasXrf || ''}" placeholder="Escribe notas del análisis...">
-          </div>
-          <div>
-            <button class="btn-accion-xrf" onclick="ingresarNota('${m.codigo}')">Ingresar nota</button>
-          </div>
-          <div>
-            <button class="btn-danger" style="height:45px; border-radius:8px;" onclick="confirmarBorrarMuestra('${m.codigo}')">🗑️ Borrar</button>
-          </div>
-        </div>
-      `;
-    }
-
-    const pesoInicialHtml = (m.pesoInicial === 'Pendiente' || m.pesoInicial === '' || m.pesoInicial === undefined) 
-      ? `<span style="color:var(--danger-color); font-weight:bold;">Pendiente de pesar</span>` 
-      : `${m.pesoInicial} kg`;
-
-    const fechaIngresoHtml = (m.fechaIngreso === 'Pendiente' || m.fechaIngreso === '' || m.fechaIngreso === undefined)
-      ? `<span style="color:var(--danger-color); font-weight:bold;">Pendiente ingreso a bodega</span>`
-      : formatearFechaLimpia(m.fechaIngreso);
-
-    const pesoFinalDisplay = (m.pesoFinal === 'Pendiente' || m.pesoFinal === '' || m.pesoFinal === undefined) 
-      ? '<span style="color:var(--danger-color);">Pendiente</span>' 
-      : `${m.pesoFinal} kg`;
-
-    div.innerHTML = `
-      <div class="card-header">
-        <div>
-          <span class="codigo">${m.codigo}</span>
-        </div>
-        <div style="text-align:right;">
-          <span class="fecha">Recolectada: <strong>${formatearFechaLimpia(m.fechaRecolectada)}</strong></span><br>
-          <span class="fecha">Ingreso Bodega: <strong>${fechaIngresoHtml}</strong></span>
-        </div>
-      </div>
-      <div class="card-body">
-        <div>
-          <strong>Proveedor:</strong> ${m.proveedor}<br>
-          <strong>Agente:</strong> ${m.agente}<br>
-          <strong>Tipo:</strong> ${m.tipo}<br>
-          <strong>Peso Inicial:</strong> ${pesoInicialHtml}
-        </div>
-        <div>
-          <strong>Tipo Análisis:</strong> ${m.tipoAnalisis}<br>
-          <strong>Estatus:</strong> <span style="font-weight:bold;">${iconoEstatus} ${m.estatusAnalisis}</span><br>
-          <strong>Peso Final:</strong> ${pesoFinalDisplay}<br>
-          <strong>Notas Agente:</strong> ${m.notasAgente || 'Ninguna'}<br>
-          <strong>Notas XRF:</strong> ${m.notasXrf || 'Ninguna'}
-        </div>
-      </div>
-      ${controlesExtra}
-    `;
-    contenedor.appendChild(div);
-  });
-}
-
-function completarPesoCompras(codigo) {
-  const m = muestras.find(item => item.codigo === codigo);
-  if (m) {
-    const valorPeso = document.getElementById(`pesoinicial-compras-${codigo}`).value;
-    const valorFechaIngreso = document.getElementById(`fechaingreso-compras-${codigo}`).value;
-    
-    if (!valorPeso || valorPeso <= 0) {
-      alert("Por favor ingrese un peso inicial válido.");
-      return;
-    }
-    if (!valorFechaIngreso) {
-      alert("Por favor seleccione la fecha de ingreso a bodega.");
-      return;
-    }
-
-    m.pesoInicial = parseFloat(valorPeso);
-    m.fechaIngreso = valorFechaIngreso;
-    guardarEnNube(m, `Muestra ${codigo} actualizada: Peso e Ingreso a bodega registrados.`);
-  }
-}
-
-function actualizarEstatusYPeso(codigo) {
-  const m = muestras.find(item => item.codigo === codigo);
-  if (m) {
-    const inputPeso = document.getElementById(`pesofinal-${codigo}`).value;
-    const selectEstatus = document.getElementById(`estatus-${codigo}`).value;
-
-    m.estatusAnalisis = selectEstatus;
-
-    if (inputPeso !== '') {
-      m.pesoFinal = parseFloat(inputPeso);
-      if (selectEstatus === 'Ingresado y en turno') {
-        m.estatusAnalisis = 'Terminado';
-      }
-    } else {
-      m.pesoFinal = 'Pendiente';
-    }
-
-    m.fechaAnalisis = new Date().toISOString().split('T')[0];
-
-    guardarEnNube(m, `Estatus (${m.estatusAnalisis}) y peso actualizados para la muestra ${codigo}.`);
-  }
-}
-
-function ingresarNota(codigo) {
-  const m = muestras.find(item => item.codigo === codigo);
-  if (m) {
-    const inputNotas = document.getElementById(`notasxrf-${codigo}`).value;
-    m.notasXrf = inputNotas;
-    guardarEnNube(m, `Nota ingresada para la muestra ${codigo}`);
-  }
-}
-
-function confirmarBorrarMuestra(codigo) {
-  const confirmacion1 = confirm(`¿Estás seguro de que deseas eliminar la muestra ${codigo}?`);
-  if (confirmacion1) {
-    const confirmacion2 = prompt(`Para confirmar el borrado definitivo de ${codigo}, escribe exactamente el código de la muestra:`);
-    if (confirmacion2 === codigo) {
-      guardarEnNube({ action: 'delete', codigo: codigo }, `La muestra ${codigo} ha sido eliminada con éxito.`);
-    } else if (confirmacion2 !== null) {
-      alert("El código ingresado no coincide. Operación cancelada.");
-    }
-  }
-}
-
-function confirmarBorrarTodo() {
-  const confirmacion1 = confirm("⚠️ ¡ATENCIÓN! Estás a punto de borrar TODAS las muestras del sistema.");
-  if (confirmacion1) {
-    const confirmacion2 = prompt("Escribe 'ELIMINAR TODO' en mayúsculas para confirmar la acción:");
-    if (confirmacion2 === "ELIMINAR TODO") {
-      guardarEnNube({ action: 'deleteAll' }, "Se han borrado todas las muestras de la base de datos.");
-    } else if (confirmacion2 !== null) {
-      alert("Texto de confirmación incorrecto. Operación cancelada.");
-    }
-  }
-}
-
-function guardarEnNube(muestraData, mensajeExito) {
-  fetch(WEB_APP_URL, {
-    method: 'POST',
-    body: JSON.stringify(muestraData)
-  })
-  .then(() => {
-    alert(mensajeExito);
-    cargarMuestrasDesdeNube();
-  })
-  .catch(err => {
-    console.error("Error guardando en nube:", err);
-    alert("Hubo un detalle al guardar en la nube. Revisa tu conexión.");
-  });
-}
-</script>
-</body>
-</html>
+  guardarEnNube(nuevaMuestra, `Muestra registrada con éxito. Código
