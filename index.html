@@ -117,9 +117,12 @@ button[type="submit"]:hover { background-color: var(--primary-dark); }
       </div>
 
       <div class="form-group">
-        <label for="fecha-ingreso">Fecha de Ingreso a Bodega (Inicio de turno/cuenta):</label>
-        <input type="date" id="fecha-ingreso">
-        <span style="font-size:12px; color:#666;">Dejar en blanco si aún está en tránsito/foránea.</span>
+        <label for="fecha-ingreso">Fecha de Ingreso a Bodega:</label>
+        <input type="date" id="fecha-ingreso" disabled>
+        <div class="checkbox-container">
+          <input type="checkbox" id="activar-ingreso" onchange="toggleIngresoBodega(this)">
+          <label for="activar-ingreso" style="margin-bottom:0; display:inline; font-weight:normal;">Ingresar a bodega hoy (El material llegó a bodega)</label>
+        </div>
       </div>
 
       <div class="form-group">
@@ -168,7 +171,6 @@ let rolActual = 'compras';
 let autenticadoXRF = false;
 
 document.getElementById('fecha-recolectada').value = new Date().toISOString().split('T')[0];
-document.getElementById('fecha-ingreso').value = new Date().toISOString().split('T')[0];
 
 actualizarListasMemoria();
 cargarMuestrasDesdeNube();
@@ -199,7 +201,7 @@ function cargarMuestrasDesdeNube() {
     })
     .catch(err => {
       console.error("Error al cargar datos:", err);
-      contenedor.innerHTML = '<p style="color:red; text-align:center;">Error al conectar con la base de datos de Google Sheets. Verifica la consola o intenta de nuevo.</p>';
+      contenedor.innerHTML = '<p style="color:red; text-align:center;">Error al conectar con la base de datos de Google Sheets. Verifica la conexión.</p>';
     });
 }
 
@@ -218,16 +220,24 @@ function cambiarRol(rol) {
   actualizarLista();
 }
 
+function toggleIngresoBodega(checkbox) {
+  const inputFechaIngreso = document.getElementById('fecha-ingreso');
+  if (checkbox.checked) {
+    inputFechaIngreso.disabled = false;
+    inputFechaIngreso.value = new Date().toISOString().split('T')[0];
+  } else {
+    inputFechaIngreso.disabled = true;
+    inputFechaIngreso.value = '';
+  }
+}
+
 function togglePesoInicial(checkbox) {
   const inputPeso = document.getElementById('peso-inicial');
-  const inputFechaIngreso = document.getElementById('fecha-ingreso');
   if (checkbox.checked) {
     inputPeso.value = '';
     inputPeso.disabled = true;
-    inputFechaIngreso.value = '';
   } else {
     inputPeso.disabled = false;
-    inputFechaIngreso.value = new Date().toISOString().split('T')[0];
   }
 }
 
@@ -277,6 +287,8 @@ document.getElementById('form-compras').addEventListener('submit', function(e) {
 
   const sinPeso = document.getElementById('sin-peso').checked;
   const inputPesoValue = document.getElementById('peso-inicial').value;
+  const activarIngreso = document.getElementById('activar-ingreso').checked;
+  const inputFechaIngresoValue = document.getElementById('fecha-ingreso').value;
 
   if (!sinPeso && (!inputPesoValue || isNaN(parseFloat(inputPesoValue)))) {
     alert("Por favor ingresa un peso inicial válido o marca la casilla 'No se pudo pesar'.");
@@ -287,13 +299,14 @@ document.getElementById('form-compras').addEventListener('submit', function(e) {
   const agente = document.getElementById('agente').value.trim();
   const tipo = document.getElementById('tipo').value.trim();
   const fechaRecolectada = document.getElementById('fecha-recolectada').value;
-  const fechaIngresoInput = document.getElementById('fecha-ingreso').value;
+  
   const pesoInicial = sinPeso ? 'Pendiente' : parseFloat(inputPesoValue);
+  const fechaIngreso = (activarIngreso && inputFechaIngresoValue) ? inputFechaIngresoValue : 'Pendiente';
+
   const tipoAnalisis = document.getElementById('tipo-analisis').value;
   const notasAgente = document.getElementById('notas-agente').value;
   
   const codigo = generarCodigo(agente);
-  const fechaIngreso = (sinPeso || !fechaIngresoInput) ? 'Pendiente' : fechaIngresoInput;
 
   if (!proveedoresGuardados.includes(proveedor)) {
     proveedoresGuardados.push(proveedor);
@@ -328,7 +341,7 @@ document.getElementById('form-compras').addEventListener('submit', function(e) {
   guardarEnNube(nuevaMuestra, `Muestra registrada con éxito. Código asignado: ${codigo}`);
   this.reset();
   document.getElementById('fecha-recolectada').value = new Date().toISOString().split('T')[0];
-  document.getElementById('fecha-ingreso').value = new Date().toISOString().split('T')[0];
+  document.getElementById('fecha-ingreso').disabled = true;
   document.getElementById('peso-inicial').disabled = false;
 });
 
@@ -358,7 +371,6 @@ function actualizarLista() {
 
     let controlesExtra = '';
 
-    // VISTA AGENTE DE COMPRAS: Fechas y Pesos separados
     if (rolActual === 'compras') {
       const hoy = new Date().toISOString().split('T')[0];
       let bloqueFecha = '';
@@ -391,7 +403,6 @@ function actualizarLista() {
       controlesExtra = bloqueFecha + bloquePeso;
     }
 
-    // VISTA ANALISTA XRF: Estatus y Peso Final separados
     if (rolActual === 'xrf') {
       const pesoFinalActual = (m.pesoFinal === 'Pendiente' || m.pesoFinal === undefined || m.pesoFinal === '') ? '' : m.pesoFinal;
       controlesExtra = `
@@ -473,7 +484,6 @@ function actualizarLista() {
   });
 }
 
-// FUNCIONES COMPRAS SEPARADAS
 function guardarFechaIngresoCompras(codigo) {
   const m = muestras.find(item => item.codigo === codigo);
   if (m) {
@@ -500,7 +510,6 @@ function guardarPesoInicialCompras(codigo) {
   }
 }
 
-// FUNCIONES XRF SEPARADAS
 function guardarEstatusXRF(codigo) {
   const m = muestras.find(item => item.codigo === codigo);
   if (m) {
@@ -569,9 +578,4 @@ function guardarEnNube(muestraData, mensajeExito) {
   })
   .catch(err => {
     console.error("Error guardando en nube:", err);
-    alert("Hubo un detalle al guardar en la nube. Revisa tu conexión.");
-  });
-}
-</script>
-</body>
-</html>
+    alert("
