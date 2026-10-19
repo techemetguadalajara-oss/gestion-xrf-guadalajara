@@ -166,3 +166,206 @@ let tiposGuardados = JSON.parse(localStorage.getItem('tipos_xrf')) || [];
 
 let rolActual = 'compras';
 let autenticadoXRF = false;
+
+document.getElementById('fecha-recolectada').value = new Date().toISOString().split('T')[0];
+document.getElementById('fecha-ingreso').value = new Date().toISOString().split('T')[0];
+
+actualizarListasMemoria();
+cargarMuestrasDesdeNube();
+
+function solicitarAccesoXRF() {
+  if (autenticadoXRF) {
+    cambiarRol('xrf');
+    return;
+  }
+  const password = prompt("Ingrese la contraseña de acceso para la Vista Analista XRF:");
+  if (password === CLAVE_XRF) {
+    autenticadoXRF = true;
+    cambiarRol('xrf');
+  } else if (password !== null) {
+    alert("Contraseña incorrecta. Acceso denegado.");
+  }
+}
+
+function cargarMuestrasDesdeNube() {
+  const contenedor = document.getElementById('lista-muestras');
+  contenedor.innerHTML = '<div class="loading">Sincronizando con Google Sheets...</div>';
+
+  fetch(WEB_APP_URL)
+    .then(response => response.json())
+    .then(data => {
+      muestras = data;
+      actualizarLista();
+    })
+    .catch(err => {
+      console.error("Error al cargar datos:", err);
+      contenedor.innerHTML = '<p style="color:red; text-align:center;">Error al conectar con la base de datos de Google Sheets.</p>';
+    });
+}
+
+function cambiarRol(rol) {
+  rolActual = rol;
+  document.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('active'));
+  if (rol === 'compras') {
+    document.getElementById('btn-compras').classList.add('active');
+    document.getElementById('seccion-compras').style.display = 'block';
+    document.getElementById('btn-borrar-todo').style.display = 'none';
+  } else {
+    document.getElementById('btn-xrf').classList.add('active');
+    document.getElementById('seccion-compras').style.display = 'none';
+    document.getElementById('btn-borrar-todo').style.display = 'inline-block';
+  }
+  actualizarLista();
+}
+
+function togglePesoInicial(checkbox) {
+  const inputPeso = document.getElementById('peso-inicial');
+  const inputFechaIngreso = document.getElementById('fecha-ingreso');
+  if (checkbox.checked) {
+    inputPeso.value = '';
+    inputPeso.disabled = true;
+    inputPeso.required = false;
+    inputFechaIngreso.value = '';
+  } else {
+    inputPeso.disabled = false;
+    inputPeso.required = true;
+    inputFechaIngreso.value = new Date().toISOString().split('T')[0];
+  }
+}
+
+function formatearFechaLimpia(str) {
+  if (!str || str === 'Pendiente') return 'Pendiente';
+  if (typeof str === 'string' && str.includes('T')) return str.split('T')[0];
+  return str;
+}
+
+function actualizarListasMemoria() {
+  const datalistProv = document.getElementById('lista-proveedores');
+  datalistProv.innerHTML = '';
+  proveedoresGuardados.forEach(p => {
+    const option = document.createElement('option');
+    option.value = p;
+    datalistProv.appendChild(option);
+  });
+
+  const datalistAgentes = document.getElementById('lista-agentes');
+  datalistAgentes.innerHTML = '';
+  agentesGuardados.forEach(a => {
+    const option = document.createElement('option');
+    option.value = a;
+    datalistAgentes.appendChild(option);
+  });
+
+  const datalistTipos = document.getElementById('lista-tipos');
+  datalistTipos.innerHTML = '';
+  tiposGuardados.forEach(t => {
+    const option = document.createElement('option');
+    option.value = t;
+    datalistTipos.appendChild(option);
+  });
+}
+
+function generarCodigo(nombreAgente) {
+  const partes = nombreAgente.trim().split(/\s+/);
+  const iniciales = (partes[0] ? partes[0][0] : 'X') + (partes[1] ? partes[1][0] : 'X');
+  const inicialesUpper = iniciales.toUpperCase();
+  const filtradas = muestras.filter(m => m.codigo && m.codigo.startsWith(inicialesUpper));
+  const consecutivo = String(filtradas.length + 1).padStart(3, '0');
+  return `${inicialesUpper}-${consecutivo}`;
+}
+
+document.getElementById('form-compras').addEventListener('submit', function(e) {
+  e.preventDefault();
+
+  const proveedor = document.getElementById('proveedor').value.trim().toUpperCase();
+  const agente = document.getElementById('agente').value.trim();
+  const tipo = document.getElementById('tipo').value.trim();
+  const fechaRecolectada = document.getElementById('fecha-recolectada').value;
+  const fechaIngresoInput = document.getElementById('fecha-ingreso').value;
+  const sinPeso = document.getElementById('sin-peso').checked;
+  const pesoInicial = sinPeso ? 'Pendiente' : parseFloat(document.getElementById('peso-inicial').value);
+  const tipoAnalisis = document.getElementById('tipo-analisis').value;
+  const notasAgente = document.getElementById('notas-agente').value;
+  
+  const codigo = generarCodigo(agente);
+  const fechaIngreso = (sinPeso || !fechaIngresoInput) ? 'Pendiente' : fechaIngresoInput;
+
+  if (!proveedoresGuardados.includes(proveedor)) {
+    proveedoresGuardados.push(proveedor);
+    localStorage.setItem('proveedores_xrf', JSON.stringify(proveedoresGuardados));
+  }
+  if (!agentesGuardados.includes(agente)) {
+    agentesGuardados.push(agente);
+    localStorage.setItem('agentes_xrf', JSON.stringify(agentesGuardados));
+  }
+  if (!tiposGuardados.includes(tipo)) {
+    tiposGuardados.push(tipo);
+    localStorage.setItem('tipos_xrf', JSON.stringify(tiposGuardados));
+  }
+  actualizarListasMemoria();
+
+  const nuevaMuestra = {
+    codigo,
+    proveedor,
+    agente,
+    tipo,
+    pesoInicial,
+    fechaRecolectada,
+    fechaIngreso,
+    estatusAnalisis: 'Ingresado y en turno',
+    tipoAnalisis,
+    fechaAnalisis: '',
+    notasAgente,
+    notasXrf: '',
+    pesoFinal: 'Pendiente'
+  };
+
+  guardarEnNube(nuevaMuestra, `Muestra registrada con éxito. Código asignado: \${codigo}`);
+  this.reset();
+  document.getElementById('fecha-recolectada').value = new Date().toISOString().split('T')[0];
+  document.getElementById('fecha-ingreso').value = new Date().toISOString().split('T')[0];
+  document.getElementById('peso-inicial').disabled = false;
+  document.getElementById('peso-inicial').required = true;
+});
+
+function actualizarLista() {
+  const contenedor = document.getElementById('lista-muestras');
+  contenedor.innerHTML = '';
+
+  if (muestras.length === 0) {
+    contenedor.innerHTML = '<p style="text-align:center; color:#666;">No hay muestras registradas en la base de datos.</p>';
+    return;
+  }
+
+  muestras.forEach((m) => {
+    const div = document.createElement('div');
+    
+    let iconoEstatus = '⏳';
+    let claseEstado = 'estado-esperando';
+
+    if (m.estatusAnalisis === 'Revisión y limpieza') { iconoEstatus = '🧹'; claseEstado = 'estado-limpieza'; }
+    else if (m.estatusAnalisis === 'Trituración') { iconoEstatus = '⚙️'; claseEstado = 'estado-trituracion'; }
+    else if (m.estatusAnalisis === 'Analizando') { iconoEstatus = '🔬'; claseEstado = 'estado-analizando'; }
+    else if (m.estatusAnalisis === 'Terminado') { iconoEstatus = '✅'; claseEstado = 'estado-terminado'; }
+    else if (m.estatusAnalisis === 'Retenida por humedad') { iconoEstatus = '💧'; claseEstado = 'estado-humedad'; }
+    else if (m.estatusAnalisis === 'Falta de peso') { iconoEstatus = '⚠️'; claseEstado = 'estado-faltapeso'; }
+
+    div.className = `muestra-item \${claseEstado}`;
+
+    let controlesExtra = '';
+
+    // Controles para el Agente de Compras (para ingresar fecha de ingreso a bodega y peso pendiente)
+    if (rolActual === 'compras' && (m.pesoInicial === 'Pendiente' || m.pesoInicial === '' || m.pesoInicial === undefined || m.fechaIngreso === 'Pendiente')) {
+      const hoy = new Date().toISOString().split('T')[0];
+      controlesExtra = `
+        <div class="card-footer" style="grid-template-columns: 1fr 1fr auto;">
+          <div>
+            <label>Fecha Ingreso Bodega:</label>
+            <input type="date" id="fechaingreso-compras-${m.codigo}" value="${hoy}">
+          </div>
+          <div>
+            <label>Ingresar Peso Inicial (kg):</label>
+            <input type="number" step="0.01" id="pesoinicial-compras-\${m.codigo}" placeholder="Ej. 12.5">
+          </div>
+          <div>
+            <button class="btn
