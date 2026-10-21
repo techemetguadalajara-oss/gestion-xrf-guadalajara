@@ -22,7 +22,7 @@
 
 * { box-sizing: border-box; }
 body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f4f8; color: var(--text-color); margin: 0; padding: 20px; }
-.container { max-width: 1200px; margin: auto; }
+.container { max-width: 1400px; margin: auto; }
 
 h1 { color: var(--primary-dark); font-size: 28px; margin-bottom: 25px; text-align: center; font-weight: 600; }
 h2 { color: var(--primary-dark); font-size: 20px; margin-bottom: 15px; border-bottom: 2px solid var(--primary-light); padding-bottom: 8px; }
@@ -35,7 +35,7 @@ h2 { color: var(--primary-dark); font-size: 20px; margin-bottom: 15px; border-bo
 .btn-secundario { background-color: #6c757d; color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; }
 .btn-secundario:hover { background-color: #5a6268; }
 
-.role-selector { display: flex; justify-content: center; gap: 15px; margin-bottom: 25px; }
+.role-selector { display: flex; justify-content: center; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; }
 .role-btn { padding: 10px 20px; border: 2px solid var(--primary-color); background: white; color: var(--primary-color); font-weight: 600; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
 .role-btn.active { background: var(--primary-color); color: white; }
 
@@ -86,6 +86,30 @@ button[type="submit"]:hover { background-color: var(--primary-dark); }
 .card-footer-row { display: flex; gap: 8px; align-items: flex-end; border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 5px; }
 .card-footer-row > div { flex-grow: 1; }
 .badge-corregido { background-color: #ffc107; color: #333; font-size: 9px; padding: 1px 4px; border-radius: 4px; font-weight: bold; margin-left: 3px; }
+
+/* ESTILOS VISTA TV / AEROPUERTO (FIDS) PERFECTAMENTE SIMÉTRICOS */
+#seccion-tv { background-color: #0f172a; color: #f8fafc; padding: 25px; border-radius: var(--radius); box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+#seccion-tv h2 { color: #38bdf8; border-bottom: 2px solid #334155; text-align: center; font-size: 22px; padding-bottom: 10px; margin-top: 0; }
+.tv-resumen-bar { display: flex; justify-content: space-around; background: #1e293b; padding: 12px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #334155; text-align: center; flex-wrap: wrap; gap: 10px; }
+.tv-resumen-item span { display: block; font-size: 12px; color: #94a3b8; }
+.tv-resumen-item strong { font-size: 20px; color: #38bdf8; }
+
+.tv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+@media (max-width: 1100px) { .tv-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 700px) { .tv-grid { grid-template-columns: 1fr; } }
+
+.tv-column { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 15px; display: flex; flex-direction: column; height: 340px; }
+.tv-col-title { font-size: 15px; font-weight: bold; color: #38bdf8; margin-bottom: 10px; text-align: center; border-bottom: 1px solid #334155; padding-bottom: 6px; flex-shrink: 0; }
+.tv-table-container { overflow-y: auto; flex-grow: 1; padding-right: 4px; }
+.tv-table-container::-webkit-scrollbar { width: 5px; }
+.tv-table-container::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+
+.tv-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.tv-table th { background: #0f172a; color: #94a3b8; text-align: left; padding: 6px; font-weight: 600; position: sticky; top: 0; z-index: 1; border-bottom: 2px solid #334155; }
+.tv-table td { padding: 6px; border-bottom: 1px solid #334155; color: #e2e8f0; }
+.tv-table tr:hover { background: #334155; }
+.tv-codigo { font-family: monospace; font-weight: bold; color: #60a5fa; background: rgba(59, 130, 246, 0.1); padding: 2px 4px; border-radius: 4px; }
+
 .loading { text-align: center; color: var(--primary-color); font-weight: 600; padding: 20px; grid-column: 1 / -1; }
 </style>
 </head>
@@ -97,8 +121,9 @@ button[type="submit"]:hover { background-color: var(--primary-dark); }
     <div class="role-selector" style="margin-bottom:0;">
       <button class="role-btn active" id="btn-compras" onclick="cambiarRol('compras')">Vista: Agente de Compras</button>
       <button class="role-btn" id="btn-xrf" onclick="solicitarAccesoXRF()">Vista: Analista XRF 🔒</button>
+      <button class="role-btn" id="btn-tv" onclick="cambiarRol('tv')" style="background-color: #0f172a; color: #38bdf8; border-color: #38bdf8;">Resumen 📺</button>
     </div>
-    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+    <div style="display:flex; gap:10px; flex-wrap:wrap;" id="controles-generales">
       <button class="btn-secundario" onclick="plegarTodasColumnas(true)">📂 Plegar Todo</button>
       <button class="btn-secundario" onclick="plegarTodasColumnas(false)">📂 Abrir Todo</button>
       <button class="btn-refrescar" onclick="cargarMuestrasDesdeNube()">🔄 Sincronizar</button>
@@ -168,10 +193,24 @@ button[type="submit"]:hover { background-color: var(--primary-dark); }
     </form>
   </div>
 
-  <!-- LISTA DE MUESTRAS EN COLUMNAS PLEGABLES -->
-  <h2>Tablero de Control de Muestras</h2>
+  <!-- LISTA DE MUESTRAS EN COLUMNAS -->
+  <h2 id="titulo-tablero">Tablero de Control de Muestras</h2>
   <div id="lista-muestras" class="tablero-columnas">
     <div class="loading">Cargando muestras desde Google Sheets...</div>
+  </div>
+
+  <!-- VISTA TV ESTILO AEROPUERTO -->
+  <div id="seccion-tv" style="display:none;">
+    <h2>📺 Monitor General de Muestras XRF (Tiempo Real)</h2>
+    
+    <!-- RESUMEN / ESTADÍSTICAS -->
+    <div class="tv-resumen-bar" id="tv-resumen-container">
+      <!-- Se llena dinámicamente -->
+    </div>
+
+    <div class="tv-grid" id="tv-grid-container">
+      <!-- Se llena dinámicamente -->
+    </div>
   </div>
 </div>
 
@@ -192,6 +231,11 @@ document.getElementById('fecha-recolectada').value = new Date().toISOString().sp
 actualizarListasMemoria();
 cargarMuestrasDesdeNube();
 
+// Actualización automática cada 30 segundos para la TV
+setInterval(() => {
+  cargarMuestrasDesdeNube(true);
+}, 30000);
+
 function solicitarAccesoXRF() {
   if (autenticadoXRF) {
     cambiarRol('xrf');
@@ -206,9 +250,11 @@ function solicitarAccesoXRF() {
   }
 }
 
-function cargarMuestrasDesdeNube() {
+function cargarMuestrasDesdeNube(silencioso = false) {
   const contenedor = document.getElementById('lista-muestras');
-  contenedor.innerHTML = '<div class="loading">Sincronizando con Google Sheets...</div>';
+  if (!silencioso && rolActual !== 'tv') {
+    contenedor.innerHTML = '<div class="loading">Sincronizando con Google Sheets...</div>';
+  }
 
   fetch(WEB_APP_URL)
     .then(response => response.json())
@@ -218,21 +264,47 @@ function cargarMuestrasDesdeNube() {
     })
     .catch(err => {
       console.error("Error al cargar datos:", err);
-      contenedor.innerHTML = '<p style="color:red; text-align:center; grid-column: 1/-1;">Error al conectar con la base de datos de Google Sheets.</p>';
+      if (!silencioso) {
+        contenedor.innerHTML = '<p style="color:red; text-align:center; grid-column: 1/-1;">Error al conectar con la base de datos de Google Sheets.</p>';
+      }
     });
 }
 
 function cambiarRol(rol) {
   rolActual = rol;
   document.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('active'));
+  
+  const secCompras = document.getElementById('seccion-compras');
+  const secLista = document.getElementById('lista-muestras');
+  const secTv = document.getElementById('seccion-tv');
+  const tituloTablero = document.getElementById('titulo-tablero');
+  const controlesGen = document.getElementById('controles-generales');
+  const btnBorrarTodo = document.getElementById('btn-borrar-todo');
+
   if (rol === 'compras') {
     document.getElementById('btn-compras').classList.add('active');
-    document.getElementById('seccion-compras').style.display = 'block';
-    document.getElementById('btn-borrar-todo').style.display = 'none';
-  } else {
+    secCompras.style.display = 'block';
+    secLista.style.display = 'grid';
+    secTv.style.display = 'none';
+    tituloTablero.style.display = 'block';
+    controlesGen.style.display = 'flex';
+    btnBorrarTodo.style.display = 'none';
+  } else if (rol === 'xrf') {
     document.getElementById('btn-xrf').classList.add('active');
-    document.getElementById('seccion-compras').style.display = 'none';
-    document.getElementById('btn-borrar-todo').style.display = 'inline-block';
+    secCompras.style.display = 'none';
+    secLista.style.display = 'grid';
+    secTv.style.display = 'none';
+    tituloTablero.style.display = 'block';
+    controlesGen.style.display = 'flex';
+    btnBorrarTodo.style.display = 'inline-block';
+  } else if (rol === 'tv') {
+    document.getElementById('btn-tv').classList.add('active');
+    secCompras.style.display = 'none';
+    secLista.style.display = 'none';
+    tituloTablero.style.display = 'none';
+    controlesGen.style.display = 'flex';
+    btnBorrarTodo.style.display = 'none';
+    secTv.style.display = 'block';
   }
   actualizarLista();
 }
@@ -364,6 +436,11 @@ document.getElementById('form-compras').addEventListener('submit', function(e) {
 });
 
 function actualizarLista() {
+  if (rolActual === 'tv') {
+    actualizarVistaTV();
+    return;
+  }
+
   const contenedor = document.getElementById('lista-muestras');
   contenedor.innerHTML = '';
 
@@ -400,6 +477,75 @@ function actualizarLista() {
   contenedor.appendChild(crearColumnaHTML(col1Title, col1Muestras, "col1"));
   contenedor.appendChild(crearColumnaHTML(col2Title, col2Muestras, "col2"));
   contenedor.appendChild(crearColumnaHTML(col3Title, col3Muestras, "col3"));
+}
+
+function actualizarVistaTV() {
+  const tvResumen = document.getElementById('tv-resumen-container');
+  const tvContainer = document.getElementById('tv-grid-container');
+  tvContainer.innerHTML = '';
+
+  const totalMuestras = muestras.length;
+  const recolectadasCount = muestras.filter(m => m.fechaIngreso === 'Pendiente' || !m.fechaIngreso).length;
+  const enProcesoCount = muestras.filter(m => m.estatusAnalisis !== 'Terminado' && m.fechaIngreso && m.fechaIngreso !== 'Pendiente').length;
+  const terminadasCount = muestras.filter(m => m.estatusAnalisis === 'Terminado').length;
+
+  tvResumen.innerHTML = `
+    <div class="tv-resumen-item"><span>Total Registradas</span><strong>${totalMuestras}</strong></div>
+    <div class="tv-resumen-item"><span>🚚 Recolectadas</span><strong>${recolectadasCount}</strong></div>
+    <div class="tv-resumen-item"><span>🔬 En Proceso / Lab</span><strong>${enProcesoCount}</strong></div>
+    <div class="tv-resumen-item"><span>✅ Terminadas</span><strong>${terminadasCount}</strong></div>
+  `;
+
+  const categorias = [
+    { titulo: "🚚 Recolectadas (En Tránsito)", filtro: m => m.fechaIngreso === 'Pendiente' || !m.fechaIngreso, campoFecha: m => `Rec: ${formatearFechaLimpia(m.fechaRecolectada)}` },
+    { titulo: "⏳ Ingresado y en turno", filtro: m => m.estatusAnalisis === 'Ingresado y en turno' && m.fechaIngreso && m.fechaIngreso !== 'Pendiente', campoFecha: m => `Ing: ${formatearFechaLimpia(m.fechaIngreso)}` },
+    { titulo: "🧹 Revisión y limpieza", filtro: m => m.estatusAnalisis === 'Revisión y limpieza', campoFecha: m => `Ing: ${formatearFechaLimpia(m.fechaIngreso)}` },
+    { titulo: "⚙️ Trituración", filtro: m => m.estatusAnalisis === 'Trituración', campoFecha: m => `Ing: ${formatearFechaLimpia(m.fechaIngreso)}` },
+    { titulo: "🔬 Analizando", filtro: m => m.estatusAnalisis === 'Analizando', campoFecha: m => `Ing: ${formatearFechaLimpia(m.fechaIngreso)}` },
+    { titulo: "💧 Retenida / ⚠️ Falta Peso", filtro: m => m.estatusAnalisis === 'Retenida por humedad' || m.estatusAnalisis === 'Falta de peso', campoFecha: m => `Ing: ${formatearFechaLimpia(m.fechaIngreso)}` },
+    { titulo: "✅ Terminado", filtro: m => m.estatusAnalisis === 'Terminado', campoFecha: m => `Term: ${formatearFechaLimpia(m.fechaTerminado)}` }
+  ];
+
+  categorias.forEach((cat) => {
+    const muestrasCat = muestras.filter(cat.filtro);
+
+    const colDiv = document.createElement('div');
+    colDiv.className = 'tv-column';
+
+    let filasHTML = '';
+    if (muestrasCat.length === 0) {
+      filasHTML = `<tr><td colspan="3" style="text-align:center; color:#64748b; padding:15px;">Sin muestras</td></tr>`;
+    } else {
+      muestrasCat.forEach(m => {
+        filasHTML += `
+          <tr>
+            <td><span class="tv-codigo">${m.codigo}</span></td>
+            <td>${m.proveedor} (${m.tipo})</td>
+            <td style="text-align:right; font-size:11px; color:#94a3b8;">${cat.campoFecha(m)}</td>
+          </tr>
+        `;
+      });
+    }
+
+    colDiv.innerHTML = `
+      <div class="tv-col-title">${cat.titulo} (${muestrasCat.length})</div>
+      <div class="tv-table-container">
+        <table class="tv-table">
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Proveedor / Tipo</th>
+              <th style="text-align:right;">Fecha Clave</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filasHTML}
+          </tbody>
+        </table>
+      </div>
+    `;
+    tvContainer.appendChild(colDiv);
+  });
 }
 
 function crearColumnaHTML(titulo, lista, idColumna) {
@@ -719,8 +865,8 @@ function guardarEnNube(muestraData, mensajeExito) {
     body: JSON.stringify(muestraData)
   })
   .then(() => {
-    alert(mensajeExito);
-    cargarMuestrasDesdeNube();
+    if (rolActual !== 'tv') alert(mensajeExito);
+    cargarMuestrasDesdeNube(true);
   })
   .catch(err => {
     console.error("Error guardando en nube:", err);
